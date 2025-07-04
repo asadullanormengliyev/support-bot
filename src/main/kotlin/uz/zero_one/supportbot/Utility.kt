@@ -43,7 +43,6 @@ class SessionManager(private val userRepository: UserRepository) {
         session.lastSessionId = newSessionId
     }
 
-
     fun clearSession(chatId: Long) {
         sessions.remove(chatId)
     }

@@ -1,14 +1,55 @@
 package uz.zero_one.supportbot
 
+import jakarta.persistence.EntityManager
+import jakarta.transaction.Transactional
+import org.springframework.data.domain.Page
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.jpa.repository.support.JpaEntityInformation
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository
+import org.springframework.data.repository.NoRepositoryBean
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.awt.print.Pageable
 import java.util.UUID
 
+@NoRepositoryBean
+interface BaseRepository<T : BaseEntity> : JpaRepository<T, Long>, JpaSpecificationExecutor<T> {
+    fun findByIdAndDeletedFalse(id: Long): T?
+    fun trash(id: Long): T?
+    fun trashList(ids: List<Long>): List<T?>
+    fun findAllNotDeleted(): List<T>
+}
+
+class BaseRepositoryImpl<T : BaseEntity>(
+    entityInformation: JpaEntityInformation<T, Long>,
+    entityManager: EntityManager
+) : SimpleJpaRepository<T, Long>(entityInformation, entityManager),  BaseRepository<T> {
+
+    val isNotDeletedSpecification = Specification<T> { root, _, cb ->
+        cb.equal(root.get<Boolean>("deleted"), false)
+    }
+
+    override fun findByIdAndDeletedFalse(id: Long): T? =
+        findByIdOrNull(id)?.run { if (deleted) null else this }
+
+    @Transactional
+    override fun trash(id: Long): T? = findByIdOrNull(id)?.run {
+        deleted = true
+        save(this)
+    }
+
+    override fun findAllNotDeleted(): List<T> = findAll(isNotDeletedSpecification)
+
+    @Transactional
+    override fun trashList(ids: List<Long>): List<T> = ids.map { trash(it)!! }
+}
+
 @Repository
-interface UserRepository : JpaRepository<UserEntity, Long> {
+interface UserRepository : BaseRepository<UserEntity> {
     fun findByChatId(chatId: Long): UserEntity?
     fun existsByChatId(id: Long): Boolean
     fun findByUserName(username: String): UserEntity?
@@ -49,12 +90,12 @@ interface UserRepository : JpaRepository<UserEntity, Long> {
 }
 
 @Repository
-interface RoleRepository : JpaRepository<RoleEntity, Long> {
+interface RoleRepository : BaseRepository<RoleEntity> {
     fun findByRole(role: UserRole): RoleEntity
 }
 
 @Repository
-interface QuestionRepository : JpaRepository<QuestionEntity, Long> {
+interface QuestionRepository : BaseRepository<QuestionEntity> {
 
     @Query(
         """
@@ -94,32 +135,10 @@ interface QuestionRepository : JpaRepository<QuestionEntity, Long> {
 
     fun findAllByUserAndOperatorIsNullAndIsAnsweredFalseOrderByCreatedAt(user: UserEntity): List<QuestionEntity>
 
-    fun findTopByUserAndOperatorAndIsAnsweredFalseOrderByCreatedAtDesc(
-        user: UserEntity,
-        operator: UserEntity
-    ): QuestionEntity?
-
     @Query("SELECT q FROM QuestionEntity q WHERE q.user.id = :userId AND q.isAnswered = false AND q.sessionId = :sessionId")
     fun findUnansweredByUserAndSession(@Param("userId") userId: Long, @Param("sessionId") sessionId: UUID): List<QuestionEntity>
 
     fun findTop1BySessionIdOrderByCreatedAtDesc(sessionId: UUID): QuestionEntity?
-
-    fun findByFromMessageId(fromMessageId: Int): QuestionEntity?
-
-    fun findTopBySessionIdAndOperatorIdAndAnswerIsNotNullOrderByIdDesc(
-        sessionId: UUID,
-        operatorId: Long
-    ): QuestionEntity?
-
-    @Query("SELECT q FROM QuestionEntity q WHERE q.toMessageId = :toMessageId")
-    fun findByToMessageId(toMessageId: Int): QuestionEntity?
-
-    @Query("SELECT q FROM QuestionEntity q WHERE q.user.chatId = :chatId AND q.isAnswered = false AND q.sessionId = :sessionId")
-    fun findUnansweredByUserChatIdAndSession(
-        @Param("chatId") chatId: Long,
-        @Param("sessionId") sessionId: UUID
-    ): List<QuestionEntity>
-
 
     @Query(
         """
@@ -136,17 +155,14 @@ interface QuestionRepository : JpaRepository<QuestionEntity, Long> {
 }
 
 @Repository
-interface QueueEntryRepository : JpaRepository<QueueEntryEntity, Long> {
+interface QueueEntryRepository : BaseRepository<QueueEntryEntity> {
     fun existsByUser(user: UserEntity): Boolean
-    fun deleteByUser(user: UserEntity)
     fun findAllByOrderByCreatedAtAsc(): List<QueueEntryEntity>
     fun findByUser(user: UserEntity): QueueEntryEntity?
-
 }
 
 @Repository
-interface OperatorRatingRepository : JpaRepository<OperatorRatingEntity, Long> {
-    fun findByUserAndOperator(user: UserEntity, operator: UserEntity): OperatorRatingEntity?
+interface OperatorRatingRepository : BaseRepository<OperatorRatingEntity> {
     fun existsByUserAndOperatorAndSessionId(user: UserEntity, operator: UserEntity, sessionId: UUID): Boolean
 }
 

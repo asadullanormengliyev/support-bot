@@ -247,7 +247,4 @@ class TelegramBot(
     @Value("\${bot.token}")
     lateinit var getToken: String
 
-    fun isInChatState(state: UserState): Boolean {
-        return state == UserState.IN_CHAT || state == UserState.ASKING_QUESTION
-    }
 }
