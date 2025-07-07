@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Pattern
 import org.telegram.telegrambots.meta.api.methods.PartialBotApiMethod
 import java.util.UUID
 
+
+data class BaseMessage(val code: Int,val message: String?)
+
 data class CreateOperatorRequest(
     val userName: String,
     @field:Pattern(

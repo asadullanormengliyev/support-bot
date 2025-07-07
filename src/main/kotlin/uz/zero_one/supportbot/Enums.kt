@@ -27,3 +27,12 @@ enum class MediaType {
     LOCATION,CONTACT, POLL, DICE, VENUE, VIDEO_NOTE, GAME
 }
 
+enum class ErrorCode(val code: Int){
+    USER_NAME_EXISTS(100),
+    AGE_MAX(101),
+    UNIVERSITY_NOT_FOUND(102),
+    USER_NOT_FOUND(103),
+    ROLE_NOT_FOUND(104)
+}
+
+

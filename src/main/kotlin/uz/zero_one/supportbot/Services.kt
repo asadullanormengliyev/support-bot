@@ -162,7 +162,7 @@ class OperatorServiceImpl(
     }
 
     fun operatorRole(): RoleEntity {
-        return roleRepository.findByRole(UserRole.OPERATOR) ?: throw RecordNotFoundException("Role operator not found")
+        return roleRepository.findByRole(UserRole.OPERATOR) ?: throw RoleNotFoundException("Role operator not found")
     }
 
     fun toResponse(user: UserEntity): OperatorResponse {
@@ -187,7 +187,7 @@ class AdminServiceImpl(
 
     override fun createAdmin(request: CreateAdminRequest): AdminResponse {
         val adminRole =
-            roleRepository.findByRole(UserRole.ADMIN) ?: throw RecordNotFoundException("Admin role not found")
+            roleRepository.findByRole(UserRole.ADMIN) ?: throw RoleNotFoundException("Admin role not found")
         val admin = UserEntity(
             chatId = request.chatId,
             userName = request.userName,
@@ -228,7 +228,7 @@ class UserService(
 
     fun registerUser(session: UserSession) {
         val userRole = roleRepository.findByRole(UserRole.USER)
-            ?: throw RecordNotFoundException("USER roli topilmadi")
+            ?: throw RoleNotFoundException("USER roli topilmadi")
 
         val user = UserEntity(
             chatId = session.chatId,
@@ -304,7 +304,6 @@ class QuestionService(
 
     fun addToQueue(user: UserEntity) {
         if (!queueRepo.existsByUser(user)) {
-            println("➕ Queue'ga qo‘shilmoqda: ${user.id}")
             queueRepo.save(QueueEntryEntity(user = user))
         }
     }
@@ -321,8 +320,6 @@ class QuestionService(
 
     fun getNextUser(operatorLanguages: List<Language>): UserEntity? {
         val all = queueRepo.findAllByOrderByCreatedAtAsc()
-        println("Navbatdagi barcha userlar soni: ${all.size}")
-
         all.forEach {
             val u = it.user
             println("UserID=${u.id} | inChat=${u.inChat} | inChatWithId=${u.inChatWithId} | lang=${u.selectedLanguage}")
